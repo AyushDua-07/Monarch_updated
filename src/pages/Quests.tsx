@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, CheckCircle2, Clock, Trash2, Skull, Swords, ShieldCheck, Lock } from 'lucide-react';
+import { Plus, X, CheckCircle2, Clock, Trash2, Skull, Swords, ShieldCheck, Lock, Pencil, Save } from 'lucide-react';
 import { useGame } from '@/contexts/GameContext';
 import { ACTIVITY_TYPES, DEMON_LEVELS, type ActivityType, type QuestFrequency, type Quest, type DemonLevel, calculateQuestXP, calculateQuestPenalty, getDemonImage } from '@/lib/gameEngine';
 import SystemCard from '@/components/SystemCard';
@@ -15,12 +15,19 @@ function isCompletedToday(quest: Quest): boolean {
 }
 
 export default function Quests() {
-  const { quests, completeQuest, failQuest, addQuest, deleteQuest } = useGame();
+  const { quests, completeQuest, failQuest, addQuest, editQuest, deleteQuest } = useGame();
   const [showCreate, setShowCreate] = useState(false);
   const [tab, setTab] = useState<'active' | 'cleared' | 'history' | 'failed'>('active');
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [newLevel, setNewLevel] = useState(0);
 
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editDemon, setEditDemon] = useState<DemonLevel>(1);
+
+  // Create form state
   const [qTitle, setQTitle] = useState('');
   const [qDesc, setQDesc] = useState('');
   const [qTarget, setQTarget] = useState('');
@@ -30,11 +37,6 @@ export default function Quests() {
   const [qDemonLevel, setQDemonLevel] = useState<DemonLevel>(1);
   const [qSelectedDays, setQSelectedDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
 
-  // Tab categories:
-  // Active: quests with status 'active'
-  // Cleared: completed TODAY — locked until tomorrow when they auto-reactivate
-  // History: completed on previous days (not today)
-  // Failed: all failed quests
   const activeQuests = quests.filter(q => q.status === 'active');
   const clearedToday = quests.filter(q => isCompletedToday(q));
   const historyQuests = quests.filter(q => q.status === 'completed' && !isCompletedToday(q));
@@ -68,9 +70,23 @@ export default function Quests() {
   }
 
   function handleComplete(questId: string) {
-    // Simply complete. No auto-respawn — the daily reset in GameContext handles reactivation next day.
     const result = completeQuest(questId);
     if (result.leveledUp) { setNewLevel(result.newLevel); setTimeout(() => setShowLevelUp(true), 300); }
+  }
+
+  function startEdit(quest: Quest) {
+    setEditingId(quest.id);
+    setEditTitle(quest.title);
+    setEditDesc(quest.description);
+    setEditDemon(quest.demonLevel);
+  }
+
+  function saveEdit() {
+    if (!editingId || !editTitle.trim()) return;
+    const xp = calculateQuestXP(BASE_XP, editDemon);
+    const pen = calculateQuestPenalty(BASE_XP, editDemon);
+    editQuest(editingId, { title: editTitle, description: editDesc, demonLevel: editDemon, xpReward: xp, xpPenalty: pen });
+    setEditingId(null);
   }
 
   const displayQuests = tab === 'active' ? activeQuests : tab === 'cleared' ? clearedToday : tab === 'history' ? historyQuests : failedQuests;
@@ -110,48 +126,38 @@ export default function Quests() {
           </motion.button>
         </motion.div>
 
-        {/* Tabs — scrollable on small screens */}
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        {/* Tabs */}
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
           {TABS.map(t => {
             const colors = TAB_COLORS[t.c];
             const isActive = tab === t.key;
             return (
               <button key={t.key} onClick={() => setTab(t.key)}
                 className="px-3 py-2 text-xs font-mono rounded-sm transition-colors border whitespace-nowrap shrink-0"
-                style={{
-                  backgroundColor: isActive ? colors.bg : 'transparent',
-                  color: isActive ? colors.text : '#6b7280',
-                  borderColor: isActive ? colors.border : 'transparent',
-                }}>
+                style={{ backgroundColor: isActive ? colors.bg : 'transparent', color: isActive ? colors.text : '#6b7280', borderColor: isActive ? colors.border : 'transparent' }}>
                 {t.label} ({t.count})
               </button>
             );
           })}
         </div>
 
-        {/* Cleared tab info banner */}
+        {/* Cleared info banner */}
         {tab === 'cleared' && clearedToday.length > 0 && (
           <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
             className="flex items-center gap-2 p-3 bg-amber-500/5 border border-amber-500/20 rounded-sm">
             <Lock size={14} className="text-amber-400 shrink-0" />
-            <p className="text-[11px] text-amber-400/80 font-mono leading-relaxed">
-              These quests are sealed for today. They will automatically reactivate tomorrow at midnight.
-            </p>
+            <p className="text-[11px] text-amber-400/80 font-mono leading-relaxed">Sealed for today. Reactivates tomorrow at midnight.</p>
           </motion.div>
         )}
 
         {/* Quest List */}
         <div className="space-y-3">
           {displayQuests.map((quest, i) => (
-            <QuestCard
-              key={quest.id}
-              quest={quest}
-              index={i}
-              isCleared={tab === 'cleared'}
-              onComplete={() => handleComplete(quest.id)}
-              onFail={() => failQuest(quest.id)}
-              onDelete={() => deleteQuest(quest.id)}
-            />
+            <QuestCard key={quest.id} quest={quest} index={i} isCleared={tab === 'cleared'}
+              isEditing={editingId === quest.id} editTitle={editTitle} editDesc={editDesc} editDemon={editDemon}
+              onEditTitle={setEditTitle} onEditDesc={setEditDesc} onEditDemon={setEditDemon}
+              onStartEdit={() => startEdit(quest)} onSaveEdit={saveEdit} onCancelEdit={() => setEditingId(null)}
+              onComplete={() => handleComplete(quest.id)} onFail={() => failQuest(quest.id)} onDelete={() => deleteQuest(quest.id)} />
           ))}
           {displayQuests.length === 0 && (
             <SystemCard>
@@ -203,7 +209,7 @@ export default function Quests() {
                   </div>
                 </div>
                 <div>
-                  <label className="text-[10px] text-gray-500 uppercase tracking-wider font-mono block mb-2">☠️ Set Demon Level</label>
+                  <label className="text-[10px] text-gray-500 uppercase tracking-wider font-mono block mb-2">☠️ Demon Level</label>
                   <div className="grid grid-cols-3 gap-2.5">
                     {([1, 2, 3, 4, 5, 6] as DemonLevel[]).map(level => {
                       const demon = DEMON_LEVELS[level]; const sel = qDemonLevel === level;
@@ -280,10 +286,16 @@ export default function Quests() {
   );
 }
 
-function QuestCard({ quest, index, isCleared, onComplete, onFail, onDelete }: {
+/* ---- Quest Card ---- */
+interface QuestCardProps {
   quest: Quest; index: number; isCleared?: boolean;
+  isEditing: boolean; editTitle: string; editDesc: string; editDemon: DemonLevel;
+  onEditTitle: (v: string) => void; onEditDesc: (v: string) => void; onEditDemon: (v: DemonLevel) => void;
+  onStartEdit: () => void; onSaveEdit: () => void; onCancelEdit: () => void;
   onComplete: () => void; onFail: () => void; onDelete: () => void;
-}) {
+}
+
+function QuestCard({ quest, index, isCleared, isEditing, editTitle, editDesc, editDemon, onEditTitle, onEditDesc, onEditDemon, onStartEdit, onSaveEdit, onCancelEdit, onComplete, onFail, onDelete }: QuestCardProps) {
   const isCompleted = quest.status === 'completed';
   const isFailed = quest.status === 'failed';
   const dc = DEMON_LEVELS[quest.demonLevel];
@@ -293,14 +305,62 @@ function QuestCard({ quest, index, isCleared, onComplete, onFail, onDelete }: {
   const minsLeft = Math.max(0, Math.floor(((due.getTime() - now.getTime()) % 3600000) / 60000));
   const isUrgent = hoursLeft < 3 && !isCompleted && !isFailed;
 
+  // Inline edit mode
+  if (isEditing) {
+    const eDc = DEMON_LEVELS[editDemon];
+    return (
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
+        <SystemCard className="border-cyan-500/30">
+          <div className="space-y-3">
+            <div>
+              <label className="text-[9px] text-gray-500 uppercase font-mono block mb-1">Title</label>
+              <input value={editTitle} onChange={e => onEditTitle(e.target.value)}
+                className="w-full bg-white/[0.05] border border-cyan-500/30 rounded-sm px-3 py-2 text-sm text-white focus:outline-none" />
+            </div>
+            <div>
+              <label className="text-[9px] text-gray-500 uppercase font-mono block mb-1">Description</label>
+              <input value={editDesc} onChange={e => onEditDesc(e.target.value)}
+                className="w-full bg-white/[0.05] border border-white/10 rounded-sm px-3 py-2 text-sm text-white focus:outline-none" />
+            </div>
+            <div>
+              <label className="text-[9px] text-gray-500 uppercase font-mono block mb-1.5">Demon Level</label>
+              <div className="flex gap-1.5">
+                {([1, 2, 3, 4, 5, 6] as DemonLevel[]).map(l => {
+                  const d = DEMON_LEVELS[l];
+                  return (
+                    <button key={l} onClick={() => onEditDemon(l)}
+                      className={`flex-1 py-2 rounded-sm text-[9px] font-mono font-bold transition-all ${editDemon === l ? 'ring-1' : ''}`}
+                      style={{ backgroundColor: editDemon === l ? `${d.color}20` : 'rgba(255,255,255,0.03)', color: d.color, borderColor: editDemon === l ? d.color : 'transparent', ringColor: d.color }}>
+                      {d.name.split(' ')[0]}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[9px] font-mono mt-1 text-center" style={{ color: eDc.color }}>
+                +{calculateQuestXP(BASE_XP, editDemon)} XP / -{calculateQuestPenalty(BASE_XP, editDemon)} XP
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={onSaveEdit} className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 text-[10px] font-mono rounded-sm hover:bg-cyan-500/30">
+                <Save size={12} /> Save
+              </button>
+              <button onClick={onCancelEdit} className="flex-1 py-2 bg-white/[0.03] border border-white/[0.06] text-gray-500 text-[10px] font-mono rounded-sm hover:text-white">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </SystemCard>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
-      <SystemCard className={`${isCleared ? 'opacity-70' : ''} ${isFailed ? 'opacity-50' : ''} ${isUrgent ? 'border-red-500/30' : ''} ${isCleared ? 'border-amber-500/20' : ''}`}>
+      <SystemCard className={`${isCleared ? 'opacity-70 border-amber-500/20' : ''} ${isFailed ? 'opacity-50' : ''} ${isUrgent ? 'border-red-500/30' : ''}`}>
         <div className="flex items-start gap-3">
           <div className="w-14 h-14 rounded-md flex items-center justify-center shrink-0 overflow-hidden relative"
             style={{ backgroundColor: `${dc.color}15`, border: `1px solid ${dc.color}20` }}>
-            <img src={getDemonImage(quest.demonLevel)} alt={dc.name}
-              className={`w-12 h-12 object-contain ${isCleared || isFailed ? 'grayscale' : ''}`} />
+            <img src={getDemonImage(quest.demonLevel)} alt={dc.name} className={`w-12 h-12 object-contain ${isCleared || isFailed ? 'grayscale' : ''}`} />
             {isCleared && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-md">
                 <ShieldCheck size={20} className="text-amber-400" />
@@ -312,19 +372,16 @@ function QuestCard({ quest, index, isCleared, onComplete, onFail, onDelete }: {
               <h4 className={`text-sm font-semibold ${isCleared ? 'text-amber-400/80' : isFailed ? 'text-red-400/60 line-through' : 'text-white'}`}>{quest.title}</h4>
               <span className="text-[8px] px-1.5 py-0.5 rounded-sm font-mono font-bold"
                 style={{ color: dc.color, backgroundColor: `${dc.color}15`, border: `1px solid ${dc.color}30` }}>{dc.name}</span>
-              {isCleared && (
-                <span className="text-[8px] px-1.5 py-0.5 rounded-sm font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                  CLEARED
-                </span>
-              )}
+              {isCleared && <span className="text-[8px] px-1.5 py-0.5 rounded-sm font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">CLEARED</span>}
             </div>
-            <div className="flex items-center gap-3 mt-2">
+            {quest.description && <p className="text-[10px] text-gray-500 mt-0.5 truncate">{quest.description}</p>}
+            <div className="flex items-center gap-3 mt-1.5">
               <span className="text-[10px] text-gray-500 font-mono">{config.icon} {config.label}</span>
               <span className="text-[10px] text-amber-400 font-mono">+{quest.xpReward} XP</span>
               <span className="text-[10px] text-red-400/60 font-mono">-{quest.xpPenalty} XP</span>
             </div>
 
-            {/* Active quest: timer + action buttons */}
+            {/* Active: timer + actions */}
             {!isCompleted && !isFailed && (
               <>
                 <div className="flex items-center gap-1 mt-1.5">
@@ -342,28 +399,31 @@ function QuestCard({ quest, index, isCleared, onComplete, onFail, onDelete }: {
                     className="flex items-center gap-1 px-3 py-1.5 bg-red-500/5 border border-red-500/20 text-red-400/60 text-[10px] font-mono rounded-sm hover:bg-red-500/10">
                     <Skull size={12} /> Abandon
                   </motion.button>
+                  <button onClick={onStartEdit} className="p-1.5 text-gray-600 hover:text-cyan-400 transition-colors" title="Edit quest">
+                    <Pencil size={12} />
+                  </button>
                   <button onClick={onDelete} className="ml-auto p-1.5 text-gray-600 hover:text-red-400"><Trash2 size={12} /></button>
                 </div>
               </>
             )}
 
-            {/* Cleared today: locked state with completion time */}
+            {/* Cleared */}
             {isCleared && quest.completedAt && (
               <div className="flex items-center gap-2 mt-2">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/5 border border-amber-500/15 rounded-sm">
                   <Lock size={10} className="text-amber-400/60" />
                   <span className="text-[10px] text-amber-400/60 font-mono">
-                    Sealed — completed at {new Date(quest.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    Sealed — {new Date(quest.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
               </div>
             )}
 
-            {/* History: past completions */}
+            {/* History */}
             {isCompleted && !isCleared && quest.completedAt && (
               <div className="mt-2">
                 <p className="text-[10px] text-emerald-400/60 font-mono">
-                  ✓ Completed {new Date(quest.completedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  ✓ {new Date(quest.completedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </p>
                 <button onClick={onDelete} className="flex items-center gap-1 px-3 py-1.5 mt-1.5 bg-white/[0.03] border border-white/[0.06] text-gray-500 text-[10px] font-mono rounded-sm hover:text-red-400">
                   <Trash2 size={12} /> Remove
