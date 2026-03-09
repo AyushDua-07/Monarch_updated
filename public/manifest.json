@@ -1,0 +1,14 @@
+{
+  "name": "LEVELING — Solo Leveling Life System",
+  "short_name": "LEVELING",
+  "description": "Solo Leveling inspired daily habit tracker with XP, quests, and demon battles",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050510",
+  "theme_color": "#050510",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
