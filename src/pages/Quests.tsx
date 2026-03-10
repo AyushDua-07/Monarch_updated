@@ -15,7 +15,7 @@ function isCompletedToday(quest: Quest): boolean {
 }
 
 export default function Quests() {
-  const { quests, completeQuest, failQuest, addQuest, editQuest, deleteQuest } = useGame();
+  const { quests, completeQuest, failQuest, addQuest, deleteQuest } = useGame();
   const [showCreate, setShowCreate] = useState(false);
   const [tab, setTab] = useState<'active' | 'cleared' | 'history' | 'failed'>('active');
   const [showLevelUp, setShowLevelUp] = useState(false);
