@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from ‘react’;
 import {
 type User, type ActivityLog, type Quest, type SystemLogEntry,
-type ActivityType, type UserStats, type QuestStatus, type DemonLevel,
+type UserStats, type QuestStatus,
 calculateQuestXP, calculateQuestPenalty, xpToNextLevel, getRankForLevel,
 getStatImpactsFromQuest, checkTitleUnlocks, generateId, RANK_NAMES,
 DEMON_LEVELS, getLevelForXP,
