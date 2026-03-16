@@ -12,7 +12,6 @@ export const ASSETS = {
   rankE: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663355234723/efa49xu7T2Q2E7hNdGy9jA/rank-e-badge_f6b76f18.png',
   levelUp: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663355234723/efa49xu7T2Q2E7hNdGy9jA/level-up-effect_11b02def.png',
   questComplete: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663355234723/efa49xu7T2Q2E7hNdGy9jA/quest-complete_45a135f0.png',
-  // Demon difficulty images
   demon1: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663355234723/efa49xu7T2Q2E7hNdGy9jA/demon-1-imp-HrTC7jv9Sn5TnqFvNRNmaE.webp',
   demon2: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663355234723/efa49xu7T2Q2E7hNdGy9jA/demon-2-ghoul-TRyxB6tTtUjVdTz8uGsXwq.webp',
   demon3: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663355234723/efa49xu7T2Q2E7hNdGy9jA/demon-3-wraith-dc6p22G4VzkavjW5egAZ9S.webp',
